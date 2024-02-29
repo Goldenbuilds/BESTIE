@@ -1,0 +1,4 @@
+Pillow
+SpeechRecognition
+requests
+pyttsx3
