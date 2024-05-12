@@ -13,20 +13,6 @@ import pyttsx3
 import difflib
 import shutil
 
-# # https://stackoverflow.com/questions/31836104/pyinstaller-and-onefile-how-to-include-an-image-in-the-exe-file
-# def resource_path(relative_path):
-#     """ Get absolute path to resource, works for dev and for PyInstaller """
-#     try:
-#         # PyInstaller creates a temp folder and stores path in _MEIPASS
-#         base_path = sys._MEIPASS2
-#     except Exception:
-#         base_path = os.path.abspath(".")
-
-#     return os.path.join(base_path, relative_path)
-
-# Logo = resource_path("Logo.png")
-
-
 # GUI CODE FOR BESTIE
 class VoiceAssistantGUI:
     def __init__(self):
@@ -105,6 +91,7 @@ class VoiceAssistant:
         self.file_system = [] #keeps track of filenames present in  cwd
         self.gui = gui
     
+    #Listens to user speak
     def listen(self):  
         recognizer = sr.Recognizer() 
         with sr.Microphone() as source: #captures audio from mic
@@ -114,6 +101,7 @@ class VoiceAssistant:
 
         return audio 
 
+    # Recognises text 
     def recognize(self, audio):
         recognizer = sr.Recognizer()
 
@@ -125,15 +113,21 @@ class VoiceAssistant:
         except sr.UnknownValueError:
             return ""
         
-    
+    #Speak 
     def say(self,text): 
         engine = pyttsx3.init(driverName='sapi5')
         engine.say(text)
         engine.runAndWait()
 
+    #make a beep sound to perform an action
     def play_sound(self,sound_freq, duration): 
         winsound.Beep(sound_freq, duration)
 
+    def greet(self):
+        self.say("Hey there! I am Bestie your file deletion buddy ")
+
+
+    #Start assistant
     def activate_assistant(self):
         self.play_sound(500,600)
         self.gui.update_text("Listening for 'Hey Bestie' ...")
@@ -158,24 +152,24 @@ class VoiceAssistant:
 
                     #activation mechanisms for various cases/scenarious
                     if "hey bestie" in detected_phrase: #user say hey bestie
-                        self.say("Hey there! I am Bestie your file deletion buddy ")
+                        self.greet()
                         self.activate_deletion()
                     
                     if "go to sleep" in detected_phrase: #user wants to end task 
-                        self.sleep()
+                        self.activate_sleepmode()
 
                     if "delete" in detected_phrase: #user needs to delete a file
                         self.activate_deletion()
 
                     else:
                         self.say("You need to give me a command. So that i can do my job")
-                        self.gui.update_text(f"Wake command not recognized")
+                        self.gui.update_text(f"Your command is not recognized,activate deletion with 'delete' word")
 
 
                 # Exceptions for programs not to run with feedback to user 
                 except sr.WaitTimeoutError: # for no speech detection
                     print("Timeout. No speech detected.")
-                    self.say("Say something")
+                    self.say("Please, Say something")
                     self.gui.update_text("Timeout. No speech detected")
 
                 except sr.UnknownValueError:
@@ -208,8 +202,6 @@ class VoiceAssistant:
                     else: 
                         print("Waiting for  command")
                         self.say("waiting for command")
-                except sr.UnknownValueError:
-                    pass  # Ignore if the speech couldn't be recognized
                 except sr.RequestError:
                     print("Failed to request results from Google Speech Recognition service.")
     
@@ -235,7 +227,8 @@ class VoiceAssistant:
                     detected_phrase = r.recognize_google(audio, language= "en-NG").lower()
                     print(f"FILENAME DETECTED: {detected_phrase}")
                     self.gui.update_text(f"FILENAME DETECTED: {detected_phrase}")
-                    
+                    self.gui.update_text(f"Searching for matches...")
+                    self.say(f"I am searching for a match to {detected_phrase}")
                     #Remove  file extension from  detected phrase
                     detected_phrase_no_extn, _= os.path.splitext(detected_phrase)
 
@@ -247,7 +240,10 @@ class VoiceAssistant:
 
                     # if there are close matches  
                     if close_matches:
+                        self.gui.update_text("Search completed.")
                         self.say(f"Did you mean {close_matches[0]}?") #ask if user means to delete the close match
+                        self.gui.update_text(f"Did you mean {close_matches[0]}?") #ask if user means to delete the close match
+
                         users_reply = self.listen().lower() #store user's reply
                         self.gui.update_text(f" You replied: {users_reply}")
 
@@ -286,8 +282,7 @@ class VoiceAssistant:
                             if filename_found:
                                 self.confirm_file_deletion(filename_found)
                                 return filename_found
-
-                    
+        
                             else:                                
                                 self.gui.update_text(f"{filename} does not exist.")  # Update text box in GUI
                                 print(f"{filename} does not exist.")
@@ -295,7 +290,6 @@ class VoiceAssistant:
                                 self.play_sound(500,600)
                                 continue # go back to asking user what file they want to delete
                                 
-
                         else:
                             self.gui.update_text("Please provide a valid filename.")  # Update text box in GUI
                             print("Please provide a valid filename.")
@@ -325,8 +319,6 @@ class VoiceAssistant:
                 
         return None
             
-
-
     def confirm_file_deletion(self, filename):
         while True:
             filename_only = os.path.basename(filename) #extract filename from the path
@@ -368,13 +360,9 @@ class VoiceAssistant:
                 self.sleep()
                 break
 
-
-
-            
         # Exit the confirm_deletion function after completing the loop
         return
                 
-
     def listen_for_confirmation(self):
         r = sr.Recognizer()
         microphone = sr.Microphone()
@@ -417,34 +405,17 @@ class VoiceAssistant:
                     print("Timeout. No response detected.")
                     self.say("No response detected. Please try again.")
                     self.gui.update_text("No response detected. Please try again.")
-
-
     def sleep(self):
         self.gui.update_text("Bestie is deactivating...")  # Update text box in GUI
 
         print("Bestie is deactivating...")
         self.say("Deactivating bestie. Call me once you need me")
         sys.exit(0)
-
-        
-    def task_to_be_done(self):
-        self.say("What can I do for you today?")
-        self.gui.update_text("What can I do for you today")
-
     
     def main(self):
         while True:
             self.activate_assistant()
 
-# if __name__ == "__main__":
-#     assistant = VoiceAssistant()
-#     assistant.main()
-
-
-
-
-    
-    
 if __name__ == "__main__":
     app = VoiceAssistantGUI()
     app.run()
